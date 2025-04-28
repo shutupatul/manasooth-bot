@@ -19,11 +19,11 @@ with open(output_file, "w", encoding="utf-8") as out:
                 for line in texts:
                     clean_line = line.strip().replace('\n', ' ')
                     out.write(clean_line + "\n")
-                print(f"✅ Processed: {csv}")
+                print(f" Processed: {csv}")
             else:
-                print(f"⚠️ 'post' column missing in: {csv}")
+                print(f" 'post' column missing in: {csv}")
 
         except Exception as e:
-            print(f"❌ Failed to process {csv}: {e}")
+            print(f" Failed to process {csv}: {e}")
 
-print(f"\n📝 Final merged text saved at: {output_file}")
+print(f"\n Final merged text saved at: {output_file}")
