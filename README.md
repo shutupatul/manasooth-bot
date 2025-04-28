@@ -1,4 +1,4 @@
-# Mental Health Support Chatbot 🤖💙
+# Mental Health Support Chatbot 
 
 A compassionate AI assistant that provides empathetic listening and mental health support using retrieval-augmented generation (RAG) with Llama 3.
 
