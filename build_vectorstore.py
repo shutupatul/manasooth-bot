@@ -3,47 +3,60 @@ import chromadb
 import torch
 from tqdm import tqdm
 import os
+import time
 
-# Check GPU availability
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device} (GPU: {torch.cuda.get_device_name(0) if device == 'cuda' else 'None'})")
-
-input_file = "dataset/merged_posts.txt"
+# Configurations
+dataset_path = "dataset/cleaned_posts.txt"
 persist_directory = "vectorstore"
+collection_name = "mental_health"
 
-# Step 1: Set up Chroma
+# Chunking parameters
+chunk_size = 500
+overlap = 50
+batch_size = 64  # Adjust for your GPU
+
+# Device setup
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f" Using device: {device} ({torch.cuda.get_device_name(0) if device == 'cuda' else 'None'})")
+
+# Step 1: Initialize ChromaDB
 chroma_client = chromadb.PersistentClient(path=persist_directory)
-collection = chroma_client.get_or_create_collection("mental_health")
+collection = chroma_client.get_or_create_collection(collection_name)
 
-# Step 2: Load model with GPU support
+# Step 2: Load embedding model
 model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
 
-# Step 3: Batch processing with GPU optimization
+# Step 3: Chunk streaming generator
 def chunk_streaming(file_path, chunk_size=500, overlap=50):
     with open(file_path, "r", encoding="utf-8") as f:
         buffer = []
         id_counter = 0
         for line in f:
-            buffer.extend(line.strip().split())
+            words = line.strip().split()
+            if not words:
+                continue
+            buffer.extend(words)
             while len(buffer) >= chunk_size:
                 chunk = " ".join(buffer[:chunk_size])
-                buffer = buffer[chunk_size - overlap:]  # maintain overlap
+                buffer = buffer[chunk_size - overlap:]
                 yield f"chunk_{id_counter}", chunk
                 id_counter += 1
+        if buffer:
+            chunk = " ".join(buffer)
+            yield f"chunk_{id_counter}", chunk
 
-print("Processing and embedding chunks...")
+# Step 4: Embed and save
+print("\n Starting chunking and embedding...\n")
+start_time = time.time()
 
-# Batch processing variables
-batch_size = 64  # Optimal for GTX 1650's 4GB VRAM
 batch_ids = []
 batch_texts = []
-batch_embeddings = []
+total_chunks = 0
 
-for chunk_id, chunk_text in tqdm(chunk_streaming(input_file), desc="Embedding chunks"):
+for chunk_id, chunk_text in tqdm(chunk_streaming(dataset_path, chunk_size, overlap), desc="Embedding chunks", unit="chunk"):
     batch_ids.append(chunk_id)
     batch_texts.append(chunk_text)
     
-    # Process in batches
     if len(batch_ids) >= batch_size:
         batch_embeddings = model.encode(batch_texts, convert_to_tensor=True).cpu().tolist()
         collection.add(
@@ -51,9 +64,10 @@ for chunk_id, chunk_text in tqdm(chunk_streaming(input_file), desc="Embedding ch
             embeddings=batch_embeddings,
             ids=batch_ids
         )
-        batch_ids, batch_texts = [], []  # Reset batches
+        total_chunks += len(batch_ids)
+        batch_ids, batch_texts = [], []
 
-# Process remaining chunks in the last partial batch
+# Final leftover batch
 if batch_ids:
     batch_embeddings = model.encode(batch_texts, convert_to_tensor=True).cpu().tolist()
     collection.add(
@@ -61,5 +75,12 @@ if batch_ids:
         embeddings=batch_embeddings,
         ids=batch_ids
     )
+    total_chunks += len(batch_ids)
 
-print("✅ Vectorstore built successfully!")
+elapsed = time.time() - start_time
+
+# Step 5: Final Summary
+print("\n Vectorstore built successfully!")
+print(f" Total embedded chunks: {total_chunks}")
+print(f" Time taken: {elapsed:.2f} seconds (~{elapsed/60:.2f} minutes)")
+print(f" Stored at: {persist_directory}\n")
