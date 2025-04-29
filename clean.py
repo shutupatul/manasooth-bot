@@ -20,4 +20,4 @@ with open(cleaned_path, "w", encoding="utf-8") as f:
     for line in filtered:
         f.write(line + "\n")
 
-print(f"\n✅ Cleaned dataset written to: {cleaned_path}")
+print(f"\n Cleaned dataset written to: {cleaned_path}")
