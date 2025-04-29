@@ -9,7 +9,7 @@ chroma_client = chromadb.PersistentClient(path=persist_directory)
 # 2. Load the collection
 collection = chroma_client.get_collection("mental_health")
 
-# 3. Load same embedding model
+# 3. Load the same embedding model
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
 
@@ -25,9 +25,10 @@ def retrieve_similar_chunks(query, top_k=5):
     return documents
 
 # --- Quick Retrieval Test ---
-query = "My parents don't understand me."
-retrieved_docs = retrieve_similar_chunks(query)
+if __name__ == "__main__":
+    query = "My parents don't understand me."
+    retrieved_docs = retrieve_similar_chunks(query)
 
-print("\nTop Retrieved Chunks:\n")
-for idx, doc in enumerate(retrieved_docs, 1):
-    print(f"{idx}. {doc}\n")
+    print("\nTop Retrieved Chunks:\n")
+    for idx, doc in enumerate(retrieved_docs, 1):
+        print(f"{idx}. {doc}\n")

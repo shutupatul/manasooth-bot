@@ -20,10 +20,14 @@ def chat():
             
             start_time = time.time()
             
-            # Retrieve context if needed
-            context = ""
+            # Retrieve context from conversation or vectorstore
             if len(conversation_history) > 2:
                 context = "\n".join(conversation_history[-2:])
+            else:
+                # Pull relevant chunks from vectorstore for grounding
+                context_chunks = retrieve_similar_chunks(query, top_k=5)
+                context = "\n".join(context_chunks)
+
             
             # Get response
             response = assistant.get_response(query, context)

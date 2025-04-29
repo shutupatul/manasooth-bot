@@ -22,6 +22,8 @@ Example good response:
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def get_response(self, prompt, context=""):
         try:
+            if len(context) > 2000:
+                context = context[-2000:]
             messages = [
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": f"Context:\n{context}\n\nUser's message:\n{prompt}"}
